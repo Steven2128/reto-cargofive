@@ -1,7 +1,9 @@
 #Django
 from os.path import join
 from django.conf import settings
+from django.contrib import messages
 from django.shortcuts import render, redirect
+from django.views.generic import ListView
 #Models
 from .models import Rates
 #Forms
@@ -25,15 +27,13 @@ def contract_view(request):
             if file.name.endswith('xlsx'):
                 imported_data = dataset.load(open(path, 'rb').read(), format="xlsx")
             elif file.name.endswith('csv'):
-                imported_data = dataset.load(open(path, 'rt', encoding='utf-8').read())
+                imported_data = dataset.load(open(path, 'rt', encoding='utf8').read())
             elif file.name.endswith('xls'):
-                print("xls")
-                imported_data = dataset.load(open(path, 'rb').read(), format="xls"
-                                                                             "")
+                imported_data = dataset.load(open(path, 'rb').read(), format="xls")
             for data in imported_data:
                 rate = Rates()
-                if data[0] is None:
-                    break
+                if data[0] and data[1] and data[4] and data[5] and data[6] and data[7] is None:
+                    continue
                 rate.origin = data[0]
                 rate.destination = data[1]
                 rate.currency = data[4]
@@ -42,5 +42,14 @@ def contract_view(request):
                 rate.fortyhc = data[7]
                 rate.contract = instance
                 rate.save()
-            return redirect('contract_new')
+            messages.success(request, 'Datos importados exitosamente!')
+            return redirect('list_rates')
     return render(request, 'contracts/index.html', {'form': form})
+
+
+class ListRateView(ListView):
+    """Vista para mostrar todas las tarifas"""
+    model = Rates
+    template_name = 'contracts/list_rates.html'
+    context_object_name = 'rates'
+
