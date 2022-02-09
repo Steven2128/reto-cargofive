@@ -5,11 +5,14 @@ from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.views.generic import ListView
 #Models
-from .models import Rates
+from .models import Rates, Contracts
 #Forms
 from .forms import ContractForm
 #Tablib
 from tablib import Dataset
+#Pandas
+import pandas as pd
+import numpy as np
 
 
 def contract_view(request):
@@ -24,6 +27,7 @@ def contract_view(request):
             path = join(settings.MEDIA_ROOT, str(instance.archivo))
 
             file = request.FILES['archivo']
+            #Verifica que extención es el archivo y realiza el corresondiente import
             if file.name.endswith('xlsx'):
                 imported_data = dataset.load(open(path, 'rb').read(), format="xlsx")
             elif file.name.endswith('csv'):
@@ -32,7 +36,7 @@ def contract_view(request):
                 imported_data = dataset.load(open(path, 'rb').read(), format="xls")
             for data in imported_data:
                 rate = Rates()
-                if data[0] and data[1] and data[4] and data[5] and data[6] and data[7] is None:
+                if data[0] is None or data[1] is None or data[4] is None or data[5] is None or data[6] is None or data[7] is None:
                     continue
                 rate.origin = data[0]
                 rate.destination = data[1]
@@ -53,3 +57,41 @@ class ListRateView(ListView):
     template_name = 'contracts/list_rates.html'
     context_object_name = 'rates'
 
+
+def compare(request):
+    """Vista para comparar las dos ultimas importaciones"""
+    results = []
+    if request.method == 'POST':
+        #Se valida si hay por lo menos 2 registros de contratos
+        if len(Contracts.objects.all().order_by('-id')[:2]) < 2:
+            messages.error(request, 'Por favor agrege otro contrato para comparar')
+        else:
+            path1 = join(settings.MEDIA_ROOT, str(Contracts.objects.all().order_by('-id')[:2][0].archivo))
+            path2 = join(settings.MEDIA_ROOT, str(Contracts.objects.all().order_by('-id')[:2][1].archivo))
+
+            contract1 = pd.read_excel(path1)
+            contract2 = pd.read_excel(path2)
+
+            index = 0
+            compare = []
+
+            #Se hace la comparación con el archivo de mayor tamaño
+            if len(contract1) >= len(contract2):
+                max = contract1
+                min = contract2
+            else:
+                max = contract2
+                min = contract1
+            for i in max.values:
+                try:
+                    compare.append(i == min.values[index])
+                    if False in compare[index]:
+                        results.append("Hay variación en la fila {}".format(index+2))
+                except:
+                    results.append("No hay fila {} en uno de los archivos".format(index+2))
+                index += 1
+
+            if len(results) == 0:
+                results.append("Los dos ultimos archivos son identicos")
+
+    return render(request, 'contracts/rates_compare.html', {'results': results})

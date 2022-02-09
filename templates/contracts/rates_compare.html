@@ -2,7 +2,7 @@
 {% load crispy_forms_tags %}
 
 {% block content %}
-    <h1 class="text-center">Registro de contrato</h1>
+    <h1 class="text-center">Comparar ultimas dos Tarifas</h1>
     {% if messages %}
         {% for message in messages %}
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -13,12 +13,18 @@
         </div>
         {% endfor %}
     {% endif %}
-    <form method="post" enctype="multipart/form-data">
+    <form method="post">
         {% csrf_token %}
-        {{ form|crispy }}
+        {% if results %}
+            <ul class="list-group">
+            {% for result in results %}
+                  <li class="list-group-item">{{ result }}</li>
+            {% endfor %}
+
+                {% endif %}
         <div class="row">
-            <div class="col-md-12 text-right">
-                <button type="submit" class="btn btn-success">Guardar</button>
+            <div class="col-md-12 text-center">
+                <button type="submit" class="btn btn-success">Comparar</button>
             </div>
         </div>
     </form>
